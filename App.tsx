@@ -9,6 +9,7 @@ import Header from './components/Header';
 import RightPanel from './components/RightPanel';
 import { GoogleGenAI, FunctionDeclaration, Type, GenerateContentResponse, Chat } from '@google/genai';
 import { Effect, Transform, Clip, Track, MediaAsset, StockAsset, Group, ChatMessage, EditorTool, ActivePanel, Animation } from './types';
+import { apiKeyManager } from './utils/apiKeyManager';
 
 // A custom hook to manage state history for undo/redo functionality.
 const useHistory = <T,>(initialState: T) => {
@@ -260,14 +261,21 @@ const App: React.FC = () => {
   const audioElementsRef = useRef<Record<string, HTMLAudioElement>>({});
   const [activePanel, setActivePanel] = useState<ActivePanel>('media-library');
   
-  // AI State
+  // AI State with key rotation
+  const [aiRefreshCounter, setAiRefreshCounter] = useState(0);
   const ai = useMemo(() => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-    return apiKey ? new GoogleGenAI({ apiKey }) : null;
-  }, []);
+    return apiKeyManager.getAIInstance();
+  }, [aiRefreshCounter]);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const initialMessage = useMemo(() => {
+    const stats = apiKeyManager.getStats();
+    if (stats.total === 0) {
+      return "AI features are currently unavailable. Add VITE_GEMINI_API_KEYS to your .env file to enable AI assistance. You can still use the editor manually!";
+    }
+    return `Hi! I'm your AI editing assistant. How can I help you? You can ask me to find stock media, add text, split clips, or apply effects.\n\n(Using ${stats.total} API keys with automatic rotation)`;
+  }, []);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'model', parts: [{ text: ai ? "Hi! I'm your AI editing assistant. How can I help you? You can ask me to find stock media, add text, split clips, or apply effects." : "AI features are currently unavailable. Add VITE_GEMINI_API_KEY to your .env file to enable AI assistance. You can still use the editor manually!" }] }
+    { role: 'model', parts: [{ text: initialMessage }] }
   ]);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false);
@@ -1387,7 +1395,7 @@ const App: React.FC = () => {
       if (!ai) {
         setChatMessages(prev => [...prev,
           { role: 'user', parts: [{ text: prompt }] },
-          { role: 'model', parts: [{ text: 'AI features are not available. Please add a VITE_GEMINI_API_KEY to your .env file to enable AI assistance.' }] }
+          { role: 'model', parts: [{ text: 'AI features are not available. Please add VITE_GEMINI_API_KEYS to your .env file to enable AI assistance.' }] }
         ]);
         return;
       }
@@ -1524,21 +1532,35 @@ const App: React.FC = () => {
           // Helper to safely extract the error body from various possible error formats
           const getErrorBody = (err: any) => {
               if (typeof err === 'object' && err !== null) {
-                  if (err.error) return err.error; // Direct object { error: ... }
-                  if (err.message) { // Error object with stringified JSON in message
+                  if (err.error) return err.error;
+                  if (err.message) {
                       try { return JSON.parse(err.message).error; } catch (e) { /* ignore */}
                   }
               }
-              if (typeof err === 'string') { // Stringified JSON
+              if (typeof err === 'string') {
                   try { return JSON.parse(err).error; } catch (e) { /* ignore */ }
               }
               return null;
           }
 
           const errorBody = getErrorBody(error);
-          
+
           if (errorBody && (errorBody.status === "RESOURCE_EXHAUSTED" || errorBody.code === 429)) {
-              errorMessage = "\n\nIt looks like I'm a bit overwhelmed right now (API rate limit exceeded). Please wait a moment before trying again.";
+              apiKeyManager.markCurrentKeyAsFailed();
+              setAiRefreshCounter(prev => prev + 1);
+              const stats = apiKeyManager.getStats();
+              errorMessage = `\n\nAPI key rate limit exceeded. Rotating to next key... (${stats.available}/${stats.total} keys available)`;
+
+              if (stats.available > 0) {
+                  errorMessage += "\n\nPlease try your request again.";
+              } else {
+                  errorMessage += "\n\nAll API keys are exhausted. Please try again later.";
+              }
+          } else if (error.message && error.message.includes('API key')) {
+              apiKeyManager.markCurrentKeyAsFailed();
+              setAiRefreshCounter(prev => prev + 1);
+              const stats = apiKeyManager.getStats();
+              errorMessage = `\n\nAPI key error. Rotating to next key... (${stats.available}/${stats.total} keys available)`;
           }
 
           setChatMessages(prev => {
