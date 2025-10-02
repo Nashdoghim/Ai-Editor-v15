@@ -111,37 +111,30 @@
       .ai-input:focus {
         box-shadow: 0 0 12px rgba(255, 45, 85, 0.5);
       }
-      .icon-sidebar-button {
-        transition: all 0.2s ease-in-out;
-      }
-      .icon-sidebar-button[aria-pressed="true"] {
-        color: white;
-        background-color: #FF2D55;
-        box-shadow: 0 0 12px rgba(255, 45, 85, 0.5);
-        transform: scale(1.05);
-      }
       .custom-tooltip {
         position: absolute;
         left: 100%;
         top: 50%;
-        transform: translateY(-50%) scale(0.9);
+        transform: translateY(-50%) translateX(-8px);
         transform-origin: left center;
-        margin-left: 12px;
-        padding: 4px 10px;
-        background-color: #1F211D; /* sidebar-bg */
-        color: rgb(241 245 249); /* text-primary */
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 6px;
+        margin-left: 16px;
+        padding: 6px 12px;
+        background: linear-gradient(135deg, rgba(31, 33, 29, 0.98), rgba(42, 44, 39, 0.98));
+        color: rgb(241 245 249);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
         font-size: 12px;
-        font-weight: 500;
+        font-weight: 600;
+        letter-spacing: 0.3px;
         white-space: nowrap;
         pointer-events: none;
         opacity: 0;
-        transition: transform 0.15s ease-in-out, opacity 0.15s ease-in-out;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: 50;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       }
       .icon-button-wrapper:hover .custom-tooltip {
-        transform: translateY(-50%) scale(1);
+        transform: translateY(-50%) translateX(0);
         opacity: 1;
       }
     </style>
