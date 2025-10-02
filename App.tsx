@@ -261,10 +261,13 @@ const App: React.FC = () => {
   const [activePanel, setActivePanel] = useState<ActivePanel>('media-library');
   
   // AI State
-  const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.API_KEY }), []);
+  const ai = useMemo(() => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+    return apiKey ? new GoogleGenAI({ apiKey }) : null;
+  }, []);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'model', parts: [{ text: "Hi! I'm your AI editing assistant. How can I help you? You can ask me to find stock media, add text, split clips, or apply effects." }] }
+    { role: 'model', parts: [{ text: ai ? "Hi! I'm your AI editing assistant. How can I help you? You can ask me to find stock media, add text, split clips, or apply effects." : "AI features are currently unavailable. Add VITE_GEMINI_API_KEY to your .env file to enable AI assistance. You can still use the editor manually!" }] }
   ]);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false);
@@ -1381,6 +1384,13 @@ const App: React.FC = () => {
     }, [handleSearchStockMedia, handleAddStockClip, handleAddTextClip, handleSplitClip, handleDeleteSelectedClip, handleAddAdjustmentClip, tracks, handleUpdateClip, setEditorState, mediaLibrary, handleAddClip]);
 
     const handleSendMessage = useCallback(async (prompt: string) => {
+      if (!ai) {
+        setChatMessages(prev => [...prev,
+          { role: 'user', parts: [{ text: prompt }] },
+          { role: 'model', parts: [{ text: 'AI features are not available. Please add a VITE_GEMINI_API_KEY to your .env file to enable AI assistance.' }] }
+        ]);
+        return;
+      }
       setIsAiLoading(true);
       const newUserMessage: ChatMessage = { role: 'user', parts: [{ text: prompt }] };
       setChatMessages(prev => [...prev, newUserMessage]);
