@@ -1,0 +1,5 @@
+{
+  "name": "Video Editor UI15",
+  "description": "A simple, clean video editor user interface built with React and Tailwind CSS, featuring a modular layout with a sidebar, preview window, and timeline.",
+  "requestFramePermissions": []
+}
